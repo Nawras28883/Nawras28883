@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <h2 class="card-title mb-4">تعديل صنف الشحنة</h2>
+        <form method="POST">
+            <div class="mb-3">
+                <label for="name" class="form-label">اسم صنف الشحنة</label>
+                <input type="text" class="form-control" id="name" name="name" value="{{ shipment_type.name }}" required>
+            </div>
+            <div class="text-center">
+                <button type="submit" class="btn btn-primary">حفظ التغييرات</button>
+                <a href="{{ url_for('list_shipment_types') }}" class="btn btn-secondary">إلغاء</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

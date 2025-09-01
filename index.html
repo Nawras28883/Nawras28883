@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card mb-4 modern-shadow">
+    <div class="card-body">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 gap-3">
+            <h2 class="card-title mb-0">قائمة الشحنات</h2>
+            <a href="{{ url_for('new_shipment') }}" class="btn btn-primary btn-lg modern-btn">
+                <i class="fas fa-plus"></i> إضافة شحنة جديدة
+            </a>
+        </div>
+
+        <div class="filter-bar d-flex flex-wrap gap-3 mb-3 p-2 rounded align-items-center justify-content-between bg-light border">
+            <form method="get" class="d-flex flex-row flex-wrap gap-2 align-items-center w-100 justify-content-md-start justify-content-center">
+                <select name="filter_field" class="form-select form-select-sm w-auto modern-select">
+                    <option value="shopiny_number" {% if filter_field == 'shopiny_number' %}selected{% endif %}>رقم شحنة شركة النقل</option>
+                    <option value="receipt_number" {% if filter_field == 'receipt_number' %}selected{% endif %}>رقم وصل شحن جبال</option>
+                    <option value="order_number" {% if filter_field == 'order_number' %}selected{% endif %}>رقم الأوردر</option>
+                </select>
+                <input type="text" name="filter_value" class="form-control form-control-sm w-auto modern-input" placeholder="أدخل الرقم..." value="{{ filter_value or '' }}">
+                <button type="submit" class="btn btn-sm btn-primary modern-btn">بحث</button>
+                <!-- احتفظ بقيم الفلاتر الأخرى -->
+                {% if selected_from_governorate %}
+                    <input type="hidden" name="from_governorate" value="{{ selected_from_governorate }}">
+                {% endif %}
+                {% if selected_to_governorate %}
+                    <input type="hidden" name="to_governorate" value="{{ selected_to_governorate }}">
+                {% endif %}
+                {% if selected_carrier_company %}
+                    <input type="hidden" name="carrier_company" value="{{ selected_carrier_company }}">
+                {% endif %}
+            </form>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover text-center align-middle">
+                <thead>
+                    <tr>
+                        <th class="text-center align-middle">رقم شحنة شركة النقل</th>
+                        <th class="text-center align-middle">تاريخ تسليم الشحنة</th>
+                        <th class="text-center align-middle">رقم وصل شحن جبال</th>
+                        <th class="text-center align-middle">رقم الأوردر</th>
+                        <th class="text-center align-middle">
+                            من
+                            <form method="get" style="display:inline;">
+                                <select name="from_governorate" class="form-select form-select-sm d-inline w-auto" onchange="this.form.submit()">
+                                    <option value="">الكل</option>
+                                    {% if selected_from_governorate and selected_from_governorate not in governorates|map(attribute='name') %}
+                                        <option value="{{ selected_from_governorate }}" selected>{{ selected_from_governorate }}</option>
+                                    {% endif %}
+                                    {% for gov in governorates %}
+                                        <option value="{{ gov.name }}" {% if selected_from_governorate == gov.name %}selected{% endif %}>{{ gov.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                {% if selected_to_governorate %}
+                                    <input type="hidden" name="to_governorate" value="{{ selected_to_governorate }}">
+                                {% endif %}
+                                {% if selected_carrier_company %}
+                                    <input type="hidden" name="carrier_company" value="{{ selected_carrier_company }}">
+                                {% endif %}
+                            </form>
+                        </th>
+                        <th class="text-center align-middle">
+                            إلى
+                            <form method="get" style="display:inline;">
+                                <select name="to_governorate" class="form-select form-select-sm d-inline w-auto" onchange="this.form.submit()">
+                                    <option value="">الكل</option>
+                                    {% if selected_to_governorate and selected_to_governorate not in governorates|map(attribute='name') %}
+                                        <option value="{{ selected_to_governorate }}" selected>{{ selected_to_governorate }}</option>
+                                    {% endif %}
+                                    {% for gov in governorates %}
+                                        <option value="{{ gov.name }}" {% if selected_to_governorate == gov.name %}selected{% endif %}>{{ gov.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                {% if selected_from_governorate %}
+                                    <input type="hidden" name="from_governorate" value="{{ selected_from_governorate }}">
+                                {% endif %}
+                                {% if selected_carrier_company %}
+                                    <input type="hidden" name="carrier_company" value="{{ selected_carrier_company }}">
+                                {% endif %}
+                            </form>
+                        </th>
+                        <th class="text-center align-middle">
+                            الشركة الناقلة
+                            <form method="get" style="display:inline;">
+                                <select name="carrier_company" class="form-select form-select-sm d-inline w-auto" onchange="this.form.submit()">
+                                    <option value="">الكل</option>
+                                    {% if selected_carrier_company and selected_carrier_company not in carrier_companies|map(attribute='name') %}
+                                        <option value="{{ selected_carrier_company }}" selected>{{ selected_carrier_company }}</option>
+                                    {% endif %}
+                                    {% for company in carrier_companies %}
+                                        <option value="{{ company.name }}" {% if selected_carrier_company == company.name %}selected{% endif %}>{{ company.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                {% if selected_from_governorate %}
+                                    <input type="hidden" name="from_governorate" value="{{ selected_from_governorate }}">
+                                {% endif %}
+                                {% if selected_to_governorate %}
+                                    <input type="hidden" name="to_governorate" value="{{ selected_to_governorate }}">
+                                {% endif %}
+                            </form>
+                        </th>
+                        <th class="text-center align-middle">الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for shipment in shipments %}
+                    <tr>
+                        <td class="text-center align-middle">{{ shipment.shopiny_number }}</td>
+                        <td class="text-center align-middle">{% if shipment.delivery_date %}{{ shipment.delivery_date.strftime('%Y-%m-%d') }}{% else %}-{% endif %}</td>
+                        <td class="text-center align-middle">{{ shipment.receipt_number }}</td>
+                        <td class="text-center align-middle">{{ shipment.order_number }}</td>
+                        <td class="text-center align-middle">{{ shipment.from_governorate }}</td>
+                        <td class="text-center align-middle">{{ shipment.to_governorate }}</td>
+                        <td class="text-center align-middle">{{ shipment.carrier_company }}</td>
+                        <td class="text-center align-middle">
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('view_shipment', id=shipment.id) }}" class="btn btn-info btn-sm btn-action">
+                                    <i class="fas fa-eye"></i> عرض
+                                </a>
+                                <a href="{{ url_for('edit_shipment', id=shipment.id) }}" class="btn btn-warning btn-sm btn-action">
+                                    <i class="fas fa-edit"></i> تعديل
+                                </a>
+                                <form action="{{ url_for('delete_shipment', id=shipment.id) }}" method="POST" class="d-inline">
+                                    <button type="submit" class="btn btn-danger btn-sm btn-action" onclick="return confirm('هل أنت متأكد من حذف هذه الشحنة؟')">
+                                        <i class="fas fa-trash"></i> حذف
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

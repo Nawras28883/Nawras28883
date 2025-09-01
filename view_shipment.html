@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="card-title">تفاصيل الشحنة</h2>
+            <div>
+                <button type="button" class="btn btn-success" id="printReceiptBtn">طباعة وصل الشحنة</button>
+                <a href="{{ url_for('edit_shipment', id=shipment.id) }}" class="btn btn-warning">
+                    <i class="fas fa-edit"></i> تعديل
+                </a>
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-right"></i> عودة
+                </a>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="fw-bold">رقم شحنة شركة النقل:</label>
+                    <p>{{ shipment.shopiny_number }}</p>
+                </div>
+                <div class="mb-3">
+                    <label class="fw-bold">تاريخ تسليم الشحنة:</label>
+                    <p>{% if shipment.delivery_date %}{{ shipment.delivery_date.strftime('%Y-%m-%d') }}{% else %}-{% endif %}</p>
+                </div>
+                <div class="mb-3">
+                    <label class="fw-bold">رقم الأوردر Odoo:</label>
+                    <p>{{ shipment.order_number }}</p>
+                </div>
+                <div class="mb-3">
+                    <label class="fw-bold">رقم وصل شحن جبال:</label>
+                    <p>{{ shipment.receipt_number }}</p>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="fw-bold">الشركة الناقلة:</label>
+                    <p>{{ shipment.carrier_company }}</p>
+                </div>
+                <div class="mb-3">
+                    <label class="fw-bold">من محافظة:</label>
+                    <p>{{ shipment.from_governorate }}</p>
+                </div>
+                <div class="mb-3">
+                    <label class="fw-bold">إلى محافظة:</label>
+                    <p>{{ shipment.to_governorate }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h4 class="card-title mb-3">تفاصيل المواد</h4>
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>صنف الشحنة</th>
+                                <th>القسم</th>
+                                <th>العدد</th>
+                                <th>الكلفة</th>
+                                <th>عدد الكراتين</th>
+                                <th>المجموع</th>
+                                <th>ملاحظات</th>
+                                <th>احتساب المجموع بناءً على عدد الكراتين</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in items %}
+                            <tr>
+                                <td>{{ item.type_name }}</td>
+                                <td>{{ item.dept_name }}</td>
+                                <td>{{ item.quantity }}</td>
+                                <td>{{ item.cost }}</td>
+                                <td>{{ item.boxes_count }}</td>
+                                <td>
+                                    {% if item.use_boxes %}
+                                        {{ (item.boxes_count|int * item.cost|int)|string|replace(',', ',') }}
+                                    {% else %}
+                                        {{ (item.quantity|int * item.cost|int)|string|replace(',', ',') }}
+                                    {% endif %}
+                                </td>
+                                <td>{{ item.notes }}</td>
+                                <td>
+                                    {% if item.use_boxes %}
+                                        <span class="badge bg-success">نعم</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">لا</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr style="background: linear-gradient(90deg, #e0eafc 0%, #cfdef3 100%); font-weight: bold; font-size: 1.1em; color: #1a237e; border-top: 2px solid #1976d2;">
+                                <td colspan="6" class="text-start">المجموع الكلي:</td>
+                                <td colspan="2" class="fw-bold" style="text-align:center;">
+                                    {{ '{:,}'.format(total_sum) }}
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- قالب الوصل للطباعة -->
+<div id="shipment-receipt-print" style="display:none; direction:rtl; font-family:'Cairo', Tahoma, Arial, sans-serif;">
+    <div style="width: 210mm; min-height: 297mm; padding: 10mm; margin:auto; background:white; border:1px solid #888; box-sizing:border-box; overflow-y:auto;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+            <div style="width:220px;"></div>
+            <h2 style="flex:1; text-align:center; margin:0; font-size:1.3em;">وصل استلام وتسليم شحنة</h2>
+            <img src="/static/jibal-logo.png" alt="Jibal Logo" style="height:60px; max-width:220px;">
+        </div>
+        <hr style="border:0; border-top:2px solid #444; margin:0 0 18px 0;">
+        <table style="width:100%; margin-bottom:10px; font-size:1em;">
+            <tr style="height: 32px;">
+                <td><b>رقم شحنة شركة النقل:</b> {{ shipment.shopiny_number }}</td>
+                <td><b>تاريخ التسليم:</b> {% if shipment.delivery_date %}{{ shipment.delivery_date.strftime('%Y-%m-%d') }}{% else %}-{% endif %}</td>
+            </tr>
+            <tr style="height: 32px;">
+                <td><b>رقم الأوردر Odoo:</b> {{ shipment.order_number }}</td>
+                <td><b>رقم وصل شحن جبال:</b> {{ shipment.receipt_number }}</td>
+            </tr>
+            <tr style="height: 32px;">
+                <td><b>الشركة الناقلة:</b> {{ shipment.carrier_company }}</td>
+                <td><b>من محافظة:</b> {{ shipment.from_governorate }}</td>
+                <td><b>إلى محافظة:</b> {{ shipment.to_governorate }}</td>
+            </tr>
+        </table>
+        <h4 style="margin-bottom:6px; font-size:1.1em;">تفاصيل المواد:</h4>
+        <table style="width:100%; border-collapse:collapse; font-size:0.85em; page-break-inside: avoid; table-layout:fixed; word-break:break-word; overflow-x:auto;" border="1">
+            <thead>
+                <tr style="background:#f0f0f0; height: 28px; text-align:center;">
+                    <th style="width:40px; padding:2px 0;">التسلسل</th>
+                    <th style="width:90px; padding:2px 0;">صنف الشحنة</th>
+                    <th style="width:80px; padding:2px 0;">القسم</th>
+                    <th style="width:60px; padding:2px 0;">العدد</th>
+                    <th style="width:60px; padding:2px 0;">الكلفة</th>
+                    <th style="width:80px; padding:2px 0;">عدد الكراتين</th>
+                    <th style="width:80px; padding:2px 0;">المجموع</th>
+                    <th style="width:100px; padding:2px 0;">ملاحظات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr style="height: 28px; text-align:center;">
+                    <td>{{ loop.index }}</td>
+                    <td>{{ item.type_name }}</td>
+                    <td>{{ item.dept_name }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ item.cost }}</td>
+                    <td>{{ item.boxes_count }}</td>
+                    <td>{{ item.total | int | string | replace(',', ',') | format }}</td>
+                    <td>{{ item.notes }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr style="height: 32px; text-align:center; font-weight:bold; background:#f9f9f9;">
+                    <td colspan="6">المجموع الكلي</td>
+                    <td colspan="2" style="font-size:1.5em; direction:ltr; text-align:center; font-weight:bold; white-space:normal;">
+                        {{ items|sum(attribute='total')|int | string | replace(',', ',') | format }}
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+        <div style="position:absolute; bottom:70px; left:0; right:0; width:100%; display:flex; justify-content:space-between;">
+            <div style="text-align:center; width:40%;">
+                <b>توقيع المسلم</b>
+                <div style="height:40px; border-bottom:1px solid #333; margin:8px 0 0 0;"></div>
+            </div>
+            <div style="text-align:center; width:40%;">
+                <b>توقيع المستلم</b>
+                <div style="height:40px; border-bottom:1px solid #333; margin:8px 0 0 0;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('printReceiptBtn').addEventListener('click', function() {
+        var printContents = document.getElementById('shipment-receipt-print').innerHTML;
+        var win = window.open('', '', 'width=900,height=1200');
+        win.document.write('<html><head><title>وصل الشحنة</title>');
+        win.document.write('<style>@media print { @page { size: A4 portrait; margin: 0; } body { margin:0; } table { page-break-inside: avoid !important; } }</style>');
+        win.document.write('</head><body dir="rtl">');
+        win.document.write(printContents);
+        win.document.write('</body></html>');
+        win.document.close();
+        win.focus();
+        setTimeout(function(){ win.print(); win.close(); }, 500);
+    });
+});
+</script>
+{% endblock %}

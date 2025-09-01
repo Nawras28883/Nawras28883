@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2 class="mb-4 text-center">التقرير الشهري للشحنات</h2>
+<div class="d-flex flex-wrap gap-2 mb-4 justify-content-center align-items-end">
+  <form method="post" class="d-flex flex-row flex-wrap gap-2 align-items-end" id="searchForm" style="margin-bottom:0;">
+    <div class="d-flex flex-row align-items-end gap-2">
+      <div>
+        <label for="from_date" class="form-label">من تاريخ</label>
+        <input type="date" class="form-control" id="from_date" name="from_date" value="{{ from_date or '' }}">
+      </div>
+      <div>
+        <label for="to_date" class="form-label">إلى تاريخ</label>
+        <input type="date" class="form-control" id="to_date" name="to_date" value="{{ to_date or '' }}">
+      </div>
+    </div>
+    <div style="margin-top:1.8em;">
+      <button type="submit" class="btn btn-primary">عرض التقرير</button>
+    </div>
+  </form>
+  <form method="post" action="{{ url_for('export_monthly_report') }}" id="exportForm" class="d-flex align-items-end" style="margin-bottom:0;">
+    <input type="hidden" name="from_date" id="export_from_date" value="{{ from_date or '' }}">
+    <input type="hidden" name="to_date" id="export_to_date" value="{{ to_date or '' }}">
+    <button type="submit" class="btn btn-success ms-2"><i class="fa fa-file-excel"></i> تصدير إلى Excel</button>
+  </form>
+</div>
+{% if from_date and to_date and shipments|length > 0 %}
+<div class="table-responsive">
+  <table class="table table-bordered align-middle shadow-sm text-center" style="background:#fff;">
+    <thead class="table-primary text-center align-middle">
+      <tr>
+        <th rowspan="2" class="text-center align-middle">#</th>
+        <th rowspan="2" class="text-center align-middle">رقم شحنة شركة النقل</th>
+        <th rowspan="2" class="text-center align-middle">تاريخ تسليم الشحنة</th>
+        <th rowspan="2" class="text-center align-middle">رقم وصل شحن جبال</th>
+        <th rowspan="2" class="text-center align-middle">رقم الأوردر</th>
+        <th rowspan="2" class="text-center align-middle">من</th>
+        <th rowspan="2" class="text-center align-middle">إلى</th>
+        <th rowspan="2" class="text-center align-middle">الشركة الناقلة</th>
+        <th colspan="7" class="text-center align-middle">تفاصيل الشحنة</th>
+      </tr>
+      <tr>
+        <th class="text-center align-middle">صنف الشحنة</th>
+        <th class="text-center align-middle">القسم</th>
+        <th class="text-center align-middle">الكمية</th>
+        <th class="text-center align-middle">التكلفة</th>
+        <th class="text-center align-middle">عدد الكراتين</th>
+        <th class="text-center align-middle">كلفة الشحنة</th>
+        <th class="text-center align-middle">ملاحظات الشحنة</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in shipments %}
+        {% set shipment_items = items_by_shipment.get(s['id'], []) %}
+        {% set rowspan = shipment_items|length if shipment_items else 1 %}
+        {% set seq = loop.index %}
+        {% if shipment_items %}
+          {% for item in shipment_items %}
+            <tr class="text-center align-middle">
+              {% if loop.first %}
+                <td rowspan="{{ rowspan }}" class="text-center align-middle">{{ seq }}</td>
+                <td rowspan="{{ rowspan }}" class="text-center align-middle">{{ s['shopiny_number'] }}</td>
+                <td rowspan="{{ rowspan }}" class="text-center align-middle">{{ s['delivery_date'][:10] if s['delivery_date'] }}</td>
+                <td rowspan="{{ rowspan }}" class="text-center align-middle">{{ s['receipt_number'] }}</td>
+                <td rowspan="{{ rowspan }}" class="text-center align-middle">{{ s['order_number'] }}</td>
+                <td rowspan="{{ rowspan }}" class="text-center align-middle">{{ s['from_gov_name'] }}</td>
+                <td rowspan="{{ rowspan }}" class="text-center align-middle">{{ s['to_gov_name'] }}</td>
+                <td rowspan="{{ rowspan }}" class="text-center align-middle">{{ s['carrier_company_name'] }}</td>
+              {% endif %}
+              <td class="text-center align-middle">{{ item['shipment_type_name'] }}</td>
+              <td class="text-center align-middle">{{ item['department_name'] }}</td>
+              <td class="text-center align-middle">{{ item['quantity']|int }}</td>
+              <td class="text-center align-middle">{{ item['cost']|int }}</td>
+              <td class="text-center align-middle">{{ item['boxes_count']|int }}</td>
+              <td class="text-center align-middle">{{ '{:,}'.format((item['boxes_count']|int if item['use_boxes'] else item['quantity']|int) * item['cost']|int) }}</td>
+              <td class="text-center align-middle">{{ item['notes'] }}</td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr class="text-center align-middle">
+            <td class="text-center align-middle">{{ seq }}</td>
+            <td class="text-center align-middle">{{ s['shopiny_number'] }}</td>
+            <td class="text-center align-middle">{{ s['delivery_date'][:10] if s['delivery_date'] }}</td>
+            <td class="text-center align-middle">{{ s['receipt_number'] }}</td>
+            <td class="text-center align-middle">{{ s['order_number'] }}</td>
+            <td class="text-center align-middle">{{ s['from_gov_name'] }}</td>
+            <td class="text-center align-middle">{{ s['to_gov_name'] }}</td>
+            <td class="text-center align-middle">{{ s['carrier_company_name'] }}</td>
+            <td class="text-center align-middle" colspan="7">لا يوجد بنود</td>
+          </tr>
+        {% endif %}
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <th colspan="10" class="text-end table-total-label">المجموع الكلي:</th>
+        <th class="text-center table-total-value">{{ '{:,}'.format(total_quantity) }}</th>
+        <th class="text-center table-total-value"></th>
+        <th class="text-center table-total-value">{{ '{:,}'.format(total_boxes) }}</th>
+        <th class="text-center table-total-value">{{ '{:,}'.format(total_cost) }}</th>
+        <th></th>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+{% elif from_date and to_date %}
+<div class="alert alert-info text-center">لا توجد بيانات ضمن الفترة المحددة.</div>
+{% endif %}
+<style>
+.table thead th, .table tbody td, .table tbody th {
+  vertical-align: middle !important;
+  text-align: center !important;
+}
+.table-bordered {
+  border: 1.5px solid #b6c6e0;
+}
+.table-primary {
+  background: linear-gradient(90deg, #2196F3 60%, #64b5f6 100%) !important;
+  color: #fff !important;
+}
+.table-total-label {
+  background: #ffe082 !important;
+  color: #b26a00 !important;
+  font-weight: bold;
+  text-align: center !important;
+  font-size: 1.25em;
+}
+.table-total-value {
+  background: #fff8e1 !important;
+  color: #b26a00 !important;
+  font-weight: bold;
+  font-size: 1.25em;
+  text-align: center !important;
+  border-right: 2px solid #ffe082;
+  border-left: 2px solid #ffe082;
+}
+</style>
+<script>
+const exportForm = document.getElementById('exportForm');
+exportForm.addEventListener('submit', function(e) {
+  document.getElementById('export_from_date').value = document.getElementById('from_date').value;
+  document.getElementById('export_to_date').value = document.getElementById('to_date').value;
+});
+</script>
+{% endblock %}

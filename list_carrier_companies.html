@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="card-title">قائمة شركات النقل</h2>
+            <a href="{{ url_for('new_carrier_company') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> إضافة شركة نقل جديدة
+            </a>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>شركة النقل</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for company in companies %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ company.name }}</td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('edit_carrier_company', id=company.id) }}" class="btn btn-warning btn-sm">
+                                    <i class="fas fa-edit"></i> تعديل
+                                </a>
+                                <form action="{{ url_for('delete_carrier_company', id=company.id) }}" method="POST" class="d-inline" 
+                                      onsubmit="return confirm('هل أنت متأكد من حذف هذه الشركة؟');">
+                                    <button type="submit" class="btn btn-danger btn-sm">
+                                        <i class="fas fa-trash"></i> حذف
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

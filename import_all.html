@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card mt-4">
+  <div class="card-body">
+    <h2 class="card-title mb-4">استيراد البيانات</h2>
+    <form method="post" enctype="multipart/form-data">
+      <div class="mb-3">
+        <label for="importFile" class="form-label">اختر ملف البيانات للاستيراد (Excel أو CSV):</label>
+        <input type="file" class="form-control" id="importFile" name="import_file" accept=".xlsx,.xls,.csv" required>
+      </div>
+      <button type="submit" class="btn btn-primary"><i class="fa fa-upload"></i> استيراد</button>
+      <a href="{{ url_for('index') }}" class="btn btn-secondary">إلغاء</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

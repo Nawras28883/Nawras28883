@@ -1,0 +1,436 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <h2 class="card-title mb-4">إضافة شحنة جديدة</h2>
+        <form method="POST" id="shipmentForm">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="shopiny_number" class="form-label">رقم شحنة شركة النقل</label>
+                        <input type="text" class="form-control {% if missing and 'shopiny_number' in missing %}is-invalid{% endif %}" id="shopiny_number" name="shopiny_number" required value="{{ (form.shopiny_number if form and form.shopiny_number is not none else shopiny_number) }}">
+                        {% if missing and 'shopiny_number' in missing %}
+                        <div class="invalid-feedback d-block">هذا الحقل مطلوب</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="delivery_date" class="form-label">تاريخ تسليم الشحنة</label>
+                        <input type="date" class="form-control {% if missing and 'delivery_date' in missing %}is-invalid{% endif %}" id="delivery_date" name="delivery_date" required value="{{ (form.delivery_date if form and form.delivery_date is not none else '') }}">
+                        {% if missing and 'delivery_date' in missing %}
+                        <div class="invalid-feedback d-block">هذا الحقل مطلوب</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="order_number" class="form-label">رقم الأوردر Odoo</label>
+                        <input type="text" class="form-control {% if missing and 'order_number' in missing %}is-invalid{% endif %}" id="order_number" name="order_number" value="{{ (form.order_number if form and form.order_number is not none else '') }}">
+                        {% if missing and 'order_number' in missing %}
+                        <div class="invalid-feedback d-block">هذا الحقل مطلوب</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="receipt_number" class="form-label">رقم وصل شحن جبال</label>
+                        <input type="text" class="form-control" id="receipt_number" name="receipt_number" value="{{ (form.receipt_number if form and form.receipt_number is not none else shopiny_number) }}" readonly>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="carrier_company" class="form-label">الشركة الناقلة</label>
+                        <select class="form-select {% if missing and 'carrier_company' in missing %}is-invalid{% endif %}" id="carrier_company" name="carrier_company" required>
+                            <option value="">اختر الشركة الناقلة</option>
+                            {% for company in carrier_companies %}
+                            <option value="{{ company.name }}" {% if form and form.carrier_company == company.name %}selected{% endif %}>{{ company.name }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if missing and 'carrier_company' in missing %}
+                        <div class="invalid-feedback d-block">هذا الحقل مطلوب</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="source_governorate" class="form-label">محافظة المصدر</label>
+                        <select class="form-select {% if missing and 'source_governorate' in missing %}is-invalid{% endif %}" id="source_governorate" name="source_governorate" required>
+                            <option value="">اختر محافظة المصدر</option>
+                            {% for governorate in governorates %}
+                            <option value="{{ governorate.name }}" {% if form and form.source_governorate == governorate.name %}selected{% endif %}>{{ governorate.name }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if missing and 'source_governorate' in missing %}
+                        <div class="invalid-feedback d-block">هذا الحقل مطلوب</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="destination_governorate" class="form-label">محافظة الوجهة</label>
+                        <select class="form-select {% if missing and 'destination_governorate' in missing %}is-invalid{% endif %}" id="destination_governorate" name="destination_governorate" required>
+                            <option value="">اختر محافظة الوجهة</option>
+                            {% for governorate in governorates %}
+                            <option value="{{ governorate.name }}" {% if form and form.destination_governorate == governorate.name %}selected{% endif %}>{{ governorate.name }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if missing and 'destination_governorate' in missing %}
+                        <div class="invalid-feedback d-block">هذا الحقل مطلوب</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h4 class="card-title mb-3">تفاصيل الشحنة</h4>
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="itemsTable">
+                            <thead>
+                                <tr>
+                                    <th class="text-center">صنف الشحنة</th>
+                                    <th class="text-center">القسم</th>
+                                    <th class="text-center">العدد</th>
+                                    <th class="text-center">الكلفة</th>
+                                    <th class="text-center">عدد الكراتين</th>
+                                    <th class="text-center">المجموع</th>
+                                    <th class="text-center">ملاحظات</th>
+                                    <th class="text-center">احتساب المجموع بناءً على عدد الكراتين</th>
+                                    <th class="text-center">إجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set item_indices = [] %}
+                                {% if form %}
+                                  {% for k in form.keys() %}
+                                    {% if k.startswith('items[') and k.endswith('][shipment_type_id]') %}
+                                      {% set _ = item_indices.append(k.split('[')[1].split(']')[0]) %}
+                                    {% endif %}
+                                  {% endfor %}
+                                {% endif %}
+                                {% if item_indices|length > 0 %}
+                                {% for idx in item_indices %}
+                                <tr>
+                                    <td>
+                                        <select class="form-select" name="items[{{ idx }}][shipment_type_id]" required>
+                                            <option value="">اختر صنف الشحنة</option>
+                                            {% for type in shipment_types %}
+                                            <option value="{{ type.id }}" {% if form['items[' ~ idx ~ '][shipment_type_id]'] == type.id|string %}selected{% endif %}>{{ type.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <select class="form-select" name="items[{{ idx }}][department_id]" required>
+                                            <option value="">اختر القسم</option>
+                                            {% for dept in departments %}
+                                            <option value="{{ dept.id }}" {% if form['items[' ~ idx ~ '][department_id]'] == dept.id|string %}selected{% endif %}>{{ dept.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control quantity text-center" name="items[{{ idx }}][quantity]" required style="width: 86px; min-width: 0; display: inline-block;" value="{{ form['items[' ~ idx ~ '][quantity]'] }}">
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control cost text-center" name="items[{{ idx }}][cost]" required style="width: 103px; min-width: 0; display: inline-block;" value="{{ form['items[' ~ idx ~ '][cost]'] }}">
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control boxes text-center" name="items[{{ idx }}][boxes_count]" required style="width: 86px; min-width: 0; display: inline-block;" value="{{ form['items[' ~ idx ~ '][boxes_count]'] }}">
+                                    </td>
+                                    <td>
+                                        <input type="text" class="form-control total text-center" name="items[{{ idx }}][total]" readonly style="width: 104px; min-width: 0; display: inline-block;" value="{{ form['items[' ~ idx ~ '][total]'] }}">
+                                    </td>
+                                    <td>
+                                        <input type="text" class="form-control" name="items[{{ idx }}][notes]" value="{{ form['items[' ~ idx ~ '][notes]'] }}">
+                                    </td>
+                                    <td class="text-center">
+                                        <input type="checkbox" class="form-check-input use_boxes text-center" name="items[{{ idx }}][use_boxes]" style="width: 18px; height: 18px; min-width: 0;" {% if form and ('items[' ~ idx ~ '][use_boxes]' in form) %}checked{% endif %}>
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-danger btn-sm remove-row">حذف</button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                {% else %}
+                                <tr>
+                                    <td>
+                                        <select class="form-select" name="items[0][shipment_type_id]" required>
+                                            <option value="">اختر صنف الشحنة</option>
+                                            {% for type in shipment_types %}
+                                            <option value="{{ type.id }}">{{ type.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <select class="form-select" name="items[0][department_id]" required>
+                                            <option value="">اختر القسم</option>
+                                            {% for dept in departments %}
+                                            <option value="{{ dept.id }}">{{ dept.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control quantity text-center" name="items[0][quantity]" required style="width: 86px; min-width: 0; display: inline-block;">
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control cost text-center" name="items[0][cost]" required style="width: 103px; min-width: 0; display: inline-block;">
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control boxes text-center" name="items[0][boxes_count]" required style="width: 86px; min-width: 0; display: inline-block;">
+                                    </td>
+                                    <td>
+                                        <input type="text" class="form-control total text-center" name="items[0][total]" readonly style="width: 104px; min-width: 0; display: inline-block;" value="{{ '{:,}'.format(0) }}">
+                                    </td>
+                                    <td>
+                                        <input type="text" class="form-control" name="items[0][notes]">
+                                    </td>
+                                    <td class="text-center">
+                                        <input type="checkbox" class="form-check-input use_boxes text-center" name="items[0][use_boxes]" style="width: 18px; height: 18px; min-width: 0;">
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-danger btn-sm remove-row">حذف</button>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                            </tbody>
+                            <tfoot>
+    <tr style="background: linear-gradient(90deg, #e0eafc 0%, #cfdef3 100%); font-weight: bold; font-size: 1.1em; color: #1a237e; border-top: 2px solid #1976d2;">
+        <td colspan="6" class="text-start">المجموع الكلي:</td>
+        <td colspan="2" id="items_total_sum" style="text-align:center;">0</td>
+    </tr>
+</tfoot>
+                        </table>
+                    </div>
+                    <button type="button" class="btn btn-secondary" id="addRow">إضافة صف جديد</button>
+                </div>
+            </div>
+
+            <div class="text-center">
+                <button type="submit" class="btn btn-primary">حفظ الشحنة</button>
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">إلغاء</a>
+                <button type="button" class="btn btn-success" id="printReceiptBtn">طباعة وصل الشحنة</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- قالب الوصل للطباعة -->
+<div id="shipment-receipt-print" style="display:none; direction:rtl; font-family:'Cairo', Tahoma, Arial, sans-serif;">
+    <div style="width: 210mm; min-height: 297mm; max-height:297mm; padding: 12mm 10mm 10mm 10mm; margin:auto; background:white; border:1px solid #888; box-sizing:border-box; overflow:hidden; position:relative;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+            <div style="width:220px;"></div>
+            <h2 style="flex:1; text-align:center; margin:0; font-size:1.3em;">وصل استلام وتسليم شحنة</h2>
+            <img src="/static/jibal-logo.png" alt="Jibal Logo" style="height:60px; max-width:220px;">
+        </div>
+        <hr style="border:0; border-top:2px solid #444; margin:0 0 18px 0;">
+        <table style="width:100%; margin-bottom:10px; font-size:1em;">
+            <tr style="height: 32px;">
+                <td><b>رقم شحنة شركة النقل:</b> <span id="r_shopiny_number"></span></td>
+                <td><b>تاريخ التسليم:</b> <span id="r_delivery_date"></span></td>
+            </tr>
+            <tr style="height: 32px;">
+                <td><b>رقم الأوردر Odoo:</b> <span id="r_order_number"></span></td>
+                <td><b>رقم وصل شحن جبال:</b> <span id="r_receipt_number"></span></td>
+            </tr>
+            <tr style="height: 32px;">
+                <td><b>الشركة الناقلة:</b> <span id="r_carrier_company"></span></td>
+                <td><b>من محافظة:</b> <span id="r_source_governorate"></span></td>
+                <td><b>إلى محافظة:</b> <span id="r_destination_governorate"></span></td>
+            </tr>
+        </table>
+        <h4 style="margin-bottom:6px; font-size:1.1em;">تفاصيل المواد:</h4>
+        <table style="width:100%; border-collapse:collapse; font-size:0.95em; page-break-inside: avoid;" border="1">
+            <thead>
+                <tr style="background:#f0f0f0; height: 32px; text-align:center;">
+                    <th>التسلسل</th>
+                    <th>صنف الشحنة</th>
+                    <th>القسم</th>
+                    <th>العدد</th>
+                    <th>الكلفة</th>
+                    <th>عدد الكراتين</th>
+                    <th>المجموع</th>
+                    <th>ملاحظات</th>
+                </tr>
+            </thead>
+            <tbody id="r_items_table">
+            </tbody>
+            <tfoot>
+                <tr style="height: 32px; text-align:center; font-weight:bold; background:#f9f9f9;">
+                    <td colspan="6">المجموع الكلي</td>
+                    <td colspan="2" id="r_total_sum"></td>
+                </tr>
+            </tfoot>
+        </table>
+        <div style="position:absolute; bottom:70px; left:0; right:0; width:100%; display:flex; justify-content:space-between;">
+            <div style="text-align:center; width:40%;">
+                <b>توقيع المسلم</b>
+                <div style="height:40px; border-bottom:1px solid #333; margin:8px 0 0 0;"></div>
+            </div>
+            <div style="text-align:center; width:40%;">
+                <b>توقيع المستلم</b>
+                <div style="height:40px; border-bottom:1px solid #333; margin:8px 0 0 0;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const itemsTable = document.getElementById('itemsTable');
+    const addRowBtn = document.getElementById('addRow');
+    
+    function formatNumberWithCommas(num) {
+        if (isNaN(num)) return '';
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+    // Calculate total
+    function calculateTotal(row) {
+        const quantity = parseFloat(row.querySelector('.quantity').value) || 0;
+        const cost = parseFloat(row.querySelector('.cost').value) || 0;
+        const boxes = parseFloat(row.querySelector('.boxes').value) || 0;
+        const useBoxes = row.querySelector('.use_boxes').checked;
+        const total = Math.round((useBoxes ? boxes : quantity) * cost);
+        row.querySelector('.total').value = formatNumberWithCommas(total);
+    }
+
+    // حساب المجموع الكلي لكل الصفوف
+    function updateTotalSum() {
+        let sum = 0;
+        itemsTable.querySelectorAll('tbody tr').forEach(row => {
+            let total = row.querySelector('.total').value.replace(/,/g, '');
+            sum += parseInt(total) || 0;
+        });
+        document.getElementById('items_total_sum').textContent = formatNumberWithCommas(sum);
+    }
+
+    // Add new row
+    addRowBtn.addEventListener('click', function() {
+        const tbody = itemsTable.querySelector('tbody');
+        const newRow = tbody.rows[0].cloneNode(true);
+        const rowIndex = tbody.rows.length;
+        
+        // Update input names with new index
+        newRow.querySelectorAll('select, input').forEach(input => {
+            if (input.type === 'checkbox') {
+                input.checked = false;
+            } else {
+                input.value = '';
+            }
+            if (input.name) {
+                input.name = input.name.replace('[0]', `[${rowIndex}]`);
+            }
+        });
+        
+        tbody.appendChild(newRow);
+        updateTotalSum();
+    });
+
+    // Remove row
+    itemsTable.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-row')) {
+            const tbody = itemsTable.querySelector('tbody');
+            if (tbody.rows.length > 1) {
+                e.target.closest('tr').remove();
+                updateTotalSum();
+            }
+        }
+    });
+
+    // Calculate total on input change
+    itemsTable.addEventListener('input', function(e) {
+        if (
+            e.target.classList.contains('quantity') ||
+            e.target.classList.contains('cost') ||
+            e.target.classList.contains('boxes') ||
+            e.target.classList.contains('use_boxes')
+        ) {
+            // إذا كان الحقل هو الكلفة، احذف الفارزة العشرية وأي أرقام بعدها
+            if (e.target.classList.contains('cost')) {
+                let val = e.target.value;
+                if (val.includes('.')) {
+                    e.target.value = val.split('.')[0];
+                }
+            }
+            calculateTotal(e.target.closest('tr'));
+            updateTotalSum();
+        }
+    });
+
+    // Initial calculation for existing rows
+    itemsTable.querySelectorAll('tbody tr').forEach(row => {
+        calculateTotal(row);
+    });
+    updateTotalSum();
+
+    document.getElementById('printReceiptBtn').addEventListener('click', function() {
+        document.getElementById('r_shopiny_number').textContent = document.getElementById('shopiny_number').value;
+        document.getElementById('r_delivery_date').textContent = document.getElementById('delivery_date').value;
+        document.getElementById('r_order_number').textContent = document.getElementById('order_number').value;
+        document.getElementById('r_receipt_number').textContent = document.getElementById('receipt_number').value;
+        document.getElementById('r_carrier_company').textContent = document.getElementById('carrier_company').options[document.getElementById('carrier_company').selectedIndex].text;
+        document.getElementById('r_source_governorate').textContent = document.getElementById('source_governorate').options[document.getElementById('source_governorate').selectedIndex].text;
+        document.getElementById('r_destination_governorate').textContent = document.getElementById('destination_governorate').options[document.getElementById('destination_governorate').selectedIndex].text;
+        var r_items_table = document.getElementById('r_items_table');
+        r_items_table.innerHTML = '';
+        var rows = document.querySelectorAll('#itemsTable tbody tr');
+        var totalSum = 0;
+        rows.forEach(function(row, idx) {
+            var cells = row.querySelectorAll('select, input');
+            var shipmentType = cells[0].options[cells[0].selectedIndex].text;
+            var dept = cells[1].options[cells[1].selectedIndex].text;
+            var quantity = cells[2].value;
+            var cost = cells[3].value;
+            var boxes = cells[4].value;
+            var total = cells[5].value;
+            var notes = cells[6].value;
+            var tr = document.createElement('tr');
+            tr.style.height = '32px';
+            tr.style.textAlign = 'center';
+            [idx+1, shipmentType, dept, quantity, cost, boxes, total, notes].forEach(function(val) {
+                var td = document.createElement('td');
+                td.textContent = val;
+                tr.appendChild(td);
+            });
+            r_items_table.appendChild(tr);
+            totalSum += parseInt(total) || 0;
+        });
+        document.getElementById('r_total_sum').textContent = totalSum;
+        var printContents = document.getElementById('shipment-receipt-print').innerHTML;
+        var win = window.open('', '', 'width=900,height=1200');
+        win.document.write('<html><head><title>وصل الشحنة</title>');
+        win.document.write('<style>@media print { @page { size: A4 portrait; margin: 0; } body { margin:0; } table { page-break-inside: avoid !important; } }</style>');
+        win.document.write('</head><body dir="rtl">');
+        win.document.write(printContents);
+        win.document.write('</body></html>');
+        win.document.close();
+        win.focus();
+        setTimeout(function(){ win.print(); win.close(); }, 500);
+    });
+
+    // إصلاح خطأ جلب رقم وصل شحن جبال
+    function updateShopinyNumber() {
+        var gov = document.getElementById('source_governorate').value;
+        var date = document.getElementById('delivery_date').value;
+        if (gov && date) {
+            fetch(`/api/generate_shopiny_number?governorate=${encodeURIComponent(gov)}&delivery_date=${encodeURIComponent(date)}`)
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('receipt_number').value = data.shopiny_number || '';
+                });
+        } else {
+            document.getElementById('receipt_number').value = '';
+        }
+    }
+    document.getElementById('source_governorate').addEventListener('change', updateShopinyNumber);
+    document.getElementById('delivery_date').addEventListener('change', updateShopinyNumber);
+});
+</script>
+{% endblock %}
